@@ -2,10 +2,11 @@
   "name": "vmix-playlist",
   "version": "1.0.0",
   "description": "vMix Playlist Manager",
+  "author": "chrissabato",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder"
+    "build": "electron-builder --publish never"
   },
   "devDependencies": {
     "electron": "^33.0.0",
