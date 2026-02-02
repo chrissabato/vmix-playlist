@@ -1,0 +1,21 @@
+{
+  "name": "vmix-playlist",
+  "version": "1.0.0",
+  "description": "vMix Playlist Manager",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.vmix-playlist.app",
+    "productName": "vMix Playlist Manager",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
