@@ -14,8 +14,14 @@
   "build": {
     "appId": "com.vmix-playlist.app",
     "productName": "vMix Playlist Manager",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html"
+    ],
     "win": {
-      "target": "nsis"
+      "target": ["nsis", "portable"]
     }
   }
 }
