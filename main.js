@@ -116,6 +116,29 @@ ipcMain.handle('select-item', async (event, { list, item, vmixHost, vmixPort, re
   }
 });
 
+ipcMain.handle('select-items', async (event, { list, items, vmixHost, vmixPort, replace }) => {
+  if (!list || !items || items.length === 0) {
+    return { ok: false, error: 'Missing list or items' };
+  }
+
+  const inputName = list;
+  const host = vmixHost || VMIX_HOST;
+  const port = vmixPort ? parseInt(vmixPort, 10) : VMIX_PORT;
+
+  try {
+    if (replace) {
+      await callVmixApi({ Function: 'SelectIndex', Input: inputName, Value: '0' }, host, port);
+      await callVmixApi({ Function: 'ListRemoveAll', Input: inputName }, host, port);
+    }
+    for (const item of items) {
+      await callVmixApi({ Function: 'ListAdd', Input: inputName, Value: item }, host, port);
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: 'vMix API error: ' + err.message };
+  }
+});
+
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {

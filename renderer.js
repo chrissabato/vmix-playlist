@@ -1,5 +1,7 @@
 const directories = [];
 let settingsVisible = true;
+let ctrlHeld = false;
+const pendingSelections = new Map();
 
 function buildButtons(container, items, sectionIndex) {
   const activeFile = container.querySelector('.item-btn.active')?.dataset.path || null;
@@ -15,9 +17,28 @@ function buildButtons(container, items, sectionIndex) {
     btn.textContent = label;
     btn.dataset.path = filepath;
     if (filepath === activeFile) btn.classList.add('active');
-    btn.addEventListener('click', () => selectItem(sectionIndex, filepath, btn));
+    btn.addEventListener('click', (e) => handleButtonClick(e, sectionIndex, filepath, btn));
     container.appendChild(btn);
   });
+}
+
+function handleButtonClick(e, sectionIndex, filepath, btn) {
+  if (e.ctrlKey || e.metaKey) {
+    btn.classList.toggle('pending');
+    let pending = pendingSelections.get(sectionIndex);
+    if (!pending) {
+      pending = [];
+      pendingSelections.set(sectionIndex, pending);
+    }
+    const idx = pending.findIndex(p => p.filepath === filepath);
+    if (idx !== -1) {
+      pending.splice(idx, 1);
+    } else {
+      pending.push({ filepath, btn });
+    }
+  } else {
+    selectItem(sectionIndex, filepath, btn);
+  }
 }
 
 function renderLists() {
@@ -170,9 +191,59 @@ function toggleSettings() {
   });
 }
 
+async function flushPendingSelections() {
+  for (const [sectionIndex, pending] of pendingSelections.entries()) {
+    if (pending.length === 0) continue;
+
+    const section = document.getElementById('section-' + sectionIndex);
+    const statusEl = document.getElementById('status-' + sectionIndex);
+    const inputName = document.getElementById('vmix-input-' + sectionIndex).value;
+    const buttons = section.querySelectorAll('.item-btn');
+    const replace = directories[sectionIndex].replace !== false;
+    const filepaths = pending.map(p => p.filepath);
+
+    buttons.forEach(b => b.disabled = true);
+    statusEl.className = 'status';
+    statusEl.textContent = 'Sending ' + filepaths.length + ' items to vMix...';
+
+    try {
+      const vmixHost = document.getElementById('vmix-host').value;
+      const vmixPort = document.getElementById('vmix-port').value;
+      const data = await window.electronAPI.selectItems({ list: inputName, items: filepaths, vmixHost, vmixPort, replace });
+      if (data.ok) {
+        statusEl.className = 'status success';
+        const verb = replace ? 'Set' : 'Added';
+        statusEl.textContent = verb + ': ' + filepaths.length + ' items';
+        if (replace) {
+          section.querySelectorAll('.item-btn').forEach(b => b.classList.remove('active'));
+        }
+        pending.forEach(p => p.btn.classList.add('active'));
+      } else {
+        statusEl.className = 'status error';
+        statusEl.textContent = 'Error: ' + (data.error || 'Unknown');
+      }
+    } catch (err) {
+      statusEl.className = 'status error';
+      statusEl.textContent = 'Error: ' + err.message;
+    } finally {
+      buttons.forEach(b => {
+        b.disabled = false;
+        b.classList.remove('pending');
+      });
+    }
+  }
+  pendingSelections.clear();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('add-dir-btn').addEventListener('click', addDirectory);
   document.getElementById('toggle-settings-btn').addEventListener('click', toggleSettings);
+
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') {
+      flushPendingSelections();
+    }
+  });
 
   window.electronAPI.onDirectoryChanged(({ dirPath, items }) => {
     const index = directories.findIndex(d => d.dirPath === dirPath);
